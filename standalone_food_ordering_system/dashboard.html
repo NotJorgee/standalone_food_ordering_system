@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Admin Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <style>
+        /* ... (Original CSS) ... */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #f0f2f5; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .navbar { background-color: #333; color: white; height: 60px; display: flex; align-items: center; padding: 0 15px; flex-shrink: 0; gap: 10px; z-index: 100; }
+        .nav-brand { font-weight: 700; font-size: 1.1rem; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+        .nav-tabs { display: flex; height: 100%; flex: 1; overflow-x: auto; scrollbar-width: none; }
+        .nav-tabs::-webkit-scrollbar { display: none; }
+        .nav-tab { background: none; border: none; color: #aaa; padding: 0 15px; font-size: 0.9rem; cursor: pointer; height: 100%; white-space: nowrap; display: flex; align-items: center; border-bottom: 3px solid transparent; }
+        .nav-tab.active { color: white; border-bottom-color: #d32f2f; background-color: rgba(255,255,255,0.05); }
+        .nav-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .btn-kiosk { background: transparent; border: 1px solid #ffc107; color: #ffc107; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.85rem; display: flex; align-items: center; gap: 6px; }
+        .dashboard-container { flex: 1; display: flex; flex-direction: column; padding: 15px; gap: 15px; overflow-y: auto; position: relative; }
+        #view-operations { display: flex; flex-direction: column; gap: 15px; height: 100%; }
+        .section-cashier { background: white; border-radius: 8px; display: flex; flex-direction: column; flex-shrink: 0; height: 35%; min-height: 200px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .section-header { padding: 10px 15px; background-color: #e3f2fd; color: #1565c0; font-weight: 700; border-bottom: 1px solid #bbdefb; display: flex; justify-content: space-between; align-items: center; }
+        .cashier-row { flex: 1; overflow-x: auto; display: flex; padding: 10px; gap: 15px; align-items: center; }
+        .section-kitchen { flex: 1; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; min-height: 0; }
+        .kanban-col { background: white; border-radius: 8px; display: flex; flex-direction: column; height: 100%; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .col-header { padding: 10px; text-align: center; color: white; font-weight: 700; text-transform: uppercase; }
+        .bg-pending { background-color: #ff9800; } .bg-preparing { background-color: #2196f3; } .bg-ready { background-color: #4caf50; }
+        .col-body { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background-color: #fafafa; }
+        .order-card { background: white; border: 1px solid #ddd; border-left: 5px solid #999; border-radius: 6px; padding: 12px; min-width: 260px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .card-top { display: flex; justify-content: space-between; margin-bottom: 8px; }
+        .card-actions { display: flex; gap: 5px; margin-top: 10px; }
+        .btn-action { flex: 1; padding: 8px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: 600; }
+        .btn-pay, .btn-cook { background-color: #2196f3; } .btn-ready { background-color: #4caf50; } .btn-complete { background-color: #333; } .btn-cancel { background-color: #f44336; max-width: 40px; }
+        .btn-quick-stock { background: white; border: 1px solid #2196f3; color: #2196f3; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
+        .btn-quick-stock:hover { background: #e3f2fd; }
+        #view-menu { display: none; height: 100%; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; background: white; }
+        .menu-manager-wrapper { display: flex; width: 100%; height: 100%; }
+        .mm-sidebar { width: 250px; background: #fff; border-right: 1px solid #eee; display: flex; flex-direction: column; overflow-y: auto; padding: 10px; gap: 10px; }
+        .mm-category { padding: 15px; background: #f8f9fa; border: 1px solid #eee; border-radius: 8px; cursor: move; display: flex; align-items: center; font-weight: 600; color: #555; transition: 0.2s; }
+        .mm-category:hover, .mm-category.active { background: #ffc107; color: #d32f2f; border-color: #ffc107; }
+        .mm-category.dragging { opacity: 0.5; border: 2px dashed #999; }
+        .btn-add-cat-visual { border: 2px dashed #ddd; background: transparent; padding: 15px; border-radius: 8px; color: #999; font-weight: 600; cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 5px; }
+        .btn-add-cat-visual:hover { border-color: #4caf50; color: #4caf50; background: #f0fdf4; }
+        .mm-grid-area { flex: 1; padding: 20px; background: #f9f9f9; overflow-y: auto; display: flex; flex-direction: column; }
+        .mm-grid-header { font-size: 1.5rem; font-weight: 800; color: #333; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;}
+        .mm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .mm-card { background: white; border-radius: 12px; padding: 10px; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); cursor: move; border: 2px solid transparent; transition: transform 0.1s; position: relative; }
+        .mm-card:hover { border-color: #ddd; transform: translateY(-2px); }
+        .mm-card.dragging { opacity: 0.4; border: 2px dashed #333; }
+        .mm-img { width: 100%; height: 120px; object-fit: cover; background: #eee; border-radius: 8px; margin-bottom: 10px; }
+        .mm-title { font-weight: 600; font-size: 1rem; color: #333; }
+        .mm-price { color: #d32f2f; font-weight: 700; }
+        .mm-add-card { border: 3px dashed #ddd; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; min-height: 200px; }
+        .plus-icon { font-size: 4rem; color: #ddd; }
+        #view-users { display: none; flex-direction: column; gap: 15px; }
+        .menu-toolbar { display: flex; justify-content: flex-end; }
+        .btn-add { background-color: #4caf50; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; }
+        .menu-table-container { background: white; border-radius: 8px; flex: 1; overflow: hidden; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; flex-direction: column; }
+        .menu-table { width: 100%; border-collapse: collapse; }
+        .menu-table th { text-align: left; padding: 15px; background-color: #f8f9fa; border-bottom: 2px solid #eee; color: #555; position: sticky; top: 0;}
+        .menu-table td { padding: 15px; border-bottom: 1px solid #eee; }
+        .btn-delete { background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+        .btn-edit { background: #2196f3; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; margin-right: 5px; font-weight: 600; }
+        #view-history { display: none; flex-direction: column; gap: 15px; height: 100%; }
+        .history-toolbar { display: flex; gap: 10px; flex-wrap: wrap; background: white; padding: 15px; border-radius: 8px; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .h-control { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .h-btn { padding: 8px 15px; cursor: pointer; border: 1px solid #ddd; background: white; border-radius: 4px; font-weight: 600; color: #555; }
+        .h-btn.active { background: #333; color: white; border-color: #333; }
+        .btn-export { background: #4caf50; color: white; border: none; margin-left: auto; }
+        .finance-cards { display: flex; gap: 15px; margin-bottom: 10px; }
+        .f-card { flex: 1; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); display: flex; align-items: center; justify-content: space-between; }
+        .f-title { color: #777; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; }
+        .f-value { font-size: 2rem; font-weight: 800; color: #333; }
+        .f-icon { font-size: 2.5rem; opacity: 0.2; }
+        .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-transform: uppercase; }
+        .status-completed { background: #e8f5e9; color: #2e7d32; }
+        .status-cancelled { background: #ffebee; color: #c62828; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 200; }
+        .modal { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+        .form-group { margin-bottom: 15px; } .form-group label { display: block; margin-bottom: 5px; font-weight: 600; color: #555; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+        .btn-close { background: #999; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .btn-save { background: #2196f3; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+        .stock-item-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .stock-toggle-btn { padding: 5px 15px; border-radius: 20px; border: none; color: white; cursor: pointer; font-size: 0.8rem; font-weight: bold; width: 80px;}
+        
+        .password-wrap { position: relative; width: 100%; }
+        .password-wrap input { width: 100%; padding-right: 40px; }
+        .toggle-btn { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 1.2rem; opacity: 0.6; padding: 0; width: auto; color: #333; }
+        .toggle-btn:hover { opacity: 1; }
+
+        @media (max-width: 768px) { body { height: auto; overflow-y: auto; } .dashboard-container { height: auto; overflow: visible; } .section-kitchen { display: flex; flex-direction: column; gap: 15px; } .section-cashier { height: auto; min-height: 140px; margin-bottom: 10px; } .brand-text, .btn-text { display: none; } .menu-manager-wrapper { flex-direction: column; } .mm-sidebar { width: 100%; height: auto; flex-direction: row; overflow-x: auto; border-right: none; border-bottom: 1px solid #eee; } .mm-category { min-width: 120px; } .finance-cards { flex-direction: column; } .history-toolbar { flex-direction: column; align-items: stretch; } .btn-export { margin-left: 0; } }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><span>🍽️</span> <span class="brand-text">Admin Panel</span></div>
+        <div class="nav-tabs">
+            <button class="nav-tab active" id="tab-ops" onclick="switchTab('operations')">Operations</button>
+            <button class="nav-tab" id="tab-hist" onclick="switchTab('history')">History</button>
+            <button class="nav-tab" id="tab-menu" onclick="switchTab('menu')">Menu Manager</button>
+            <button class="nav-tab" id="tab-users" onclick="switchTab('users')">Users</button>
+        </div>
+        <div class="nav-actions">
+            <button class="btn-kiosk" onclick="window.location.href='kiosk.html'"><span>🚀</span><span class="btn-text">Launch Kiosk</span></button>
+            <button onclick="logout()" style="background:#555; border:none; color:white; width:32px; height:32px; border-radius:50%; cursor:pointer; display:flex; align-items:center; justify-content:center;" title="Logout">⏻</button>
+        </div>
+    </nav>
+
+    <div class="dashboard-container">
+        <div id="view-operations">
+            <section class="section-cashier">
+                <div class="section-header">
+                    <div style="display:flex; align-items:center; gap:10px;"><span>💰 Incoming</span><span id="unpaid-count" style="background:#2196f3; color:white; padding:2px 8px; border-radius:10px; font-size:0.8rem;">0</span></div>
+                    <button class="btn-quick-stock" onclick="openStockModal()">⚡ Manage Stock</button>
+                </div>
+                <div class="cashier-row" id="unpaid-list"></div>
+            </section>
+            <section class="section-kitchen">
+                <div class="kanban-col"><div class="col-header bg-pending">Pending</div><div class="col-body" id="pending-list"></div></div>
+                <div class="kanban-col"><div class="col-header bg-preparing">Preparing</div><div class="col-body" id="preparing-list"></div></div>
+                <div class="kanban-col"><div class="col-header bg-ready">Ready</div><div class="col-body" id="ready-list"></div></div>
+            </section>
+        </div>
+
+        <div id="view-history">
+            <div class="history-toolbar">
+                <input type="date" id="date-start" class="h-control" onchange="fetchHistory()"><span>to</span><input type="date" id="date-end" class="h-control" onchange="fetchHistory()">
+                <button class="h-btn active" id="filter-all" onclick="setHistoryFilter('all')">All</button><button class="h-btn" id="filter-completed" onclick="setHistoryFilter('completed')">Completed</button><button class="h-btn" id="filter-cancelled" onclick="setHistoryFilter('cancelled')">Cancelled</button>
+                <button class="h-btn btn-export" onclick="downloadCSV()">⬇ Export CSV</button>
+            </div>
+            <div class="finance-cards">
+                <div class="f-card"><div><div class="f-title">Total Revenue</div><div class="f-value" id="total-revenue">₱0.00</div></div><div class="f-icon">💰</div></div>
+                <div class="f-card"><div><div class="f-title">Total Orders</div><div class="f-value" id="total-orders">0</div></div><div class="f-icon">🧾</div></div>
+            </div>
+            <div class="menu-table-container"><table class="menu-table"><thead><tr><th>Order #</th><th>Date</th><th>Items</th><th>Total</th><th>Status</th></tr></thead><tbody id="history-list"></tbody></table></div>
+        </div>
+
+        <div id="view-menu">
+            <div class="menu-manager-wrapper">
+                <div class="mm-sidebar" id="mm-sidebar-list"></div>
+                <div class="mm-grid-area">
+                    <div class="mm-grid-header"><span id="mm-current-cat-title">Category</span><span style="font-size:0.8rem; font-weight:normal; color:#777;">(Drag items to reorder)</span></div>
+                    <div class="mm-grid" id="mm-product-grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-users">
+            <div class="menu-toolbar"><button class="btn-add" onclick="openUserModal()">+ Add User</button></div>
+            <div class="menu-table-container"><table class="menu-table"><thead><tr><th>Username</th><th>Role</th><th>Created At</th><th>Actions</th></tr></thead><tbody id="user-list"></tbody></table></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="productModal">
+        <div class="modal">
+            <h2 id="modalTitle">Add Product</h2>
+            <input type="hidden" id="p_id">
+            <div style="text-align:center; margin-bottom:15px;"><img id="p_preview" src="" style="width:100px; height:100px; object-fit:cover; background:#eee; border-radius:8px; display:none;"></div>
+            <div class="form-group"><label>Image</label><input type="file" id="p_image" class="form-control" accept="image/*" onchange="previewImage(this)"></div>
+            <div class="form-group"><label>Name</label><input type="text" id="p_name" class="form-control"></div>
+            <div class="form-group"><label>Category</label><select id="p_category" class="form-control"></select></div>
+            <div class="form-group"><label>Ingredients (Allergens)</label><textarea id="p_ingredients" class="form-control" rows="3" placeholder="e.g. Flour, Eggs, Milk, Peanuts..."></textarea></div>
+            <div class="form-group" style="display:flex; gap:10px;"><div style="flex:1;"><label>Price</label><input type="number" id="p_price" class="form-control"></div><div style="flex:1;"><label>Status</label><select id="p_status" class="form-control"><option value="1">Available</option><option value="0">Out of Stock</option></select></div></div>
+            <div class="modal-actions"><button class="btn-close" style="background:#f44336; float:left; margin-right:auto;" onclick="deleteProductFromModal()">Delete</button><button class="btn-close" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveProduct()">Save</button></div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="categoryModal">
+        <div class="modal" style="max-width:300px;"><h2 id="catModalTitle">Add Category</h2><input type="hidden" id="c_id"><div class="form-group"><label>Name</label><input type="text" id="c_name" class="form-control"></div><div class="form-group"><label>Icon (Emoji)</label><input type="text" id="c_icon" class="form-control" placeholder="e.g. 🍔"></div><div class="modal-actions"><button class="btn-close" style="background:#f44336; float:left; margin-right:auto;" onclick="deleteCategoryFromModal()">Delete</button><button class="btn-close" onclick="closeCatModal()">Cancel</button><button class="btn-save" onclick="saveCategory()">Save</button></div></div>
+    </div>
+    
+    <div class="modal-overlay" id="userModal">
+        <div class="modal" style="max-width:350px;">
+            <h2 id="userModalTitle">Add New User</h2>
+            <input type="hidden" id="u_id"> <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="u_name" class="form-control">
+            </div>
+            
+            <div class="form-group">
+                <label>Password <small id="pass-hint" style="color:#777; font-weight:normal; display:none;">(Leave blank to keep)</small></label>
+                <div class="password-wrap">
+                    <input type="password" id="u_pass" class="form-control">
+                    <button class="toggle-btn" onclick="togglePass('u_pass')">🔍</button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Role</label>
+                <select id="u_role" class="form-control">
+                    <option value="admin">Admin</option>
+                    <option value="staff">Staff</option>
+                </select>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="btn-close" onclick="closeUserModal()">Cancel</button>
+                <button class="btn-save" onclick="saveUser()">Save User</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="stockModal">
+        <div class="modal"><h2>Manage Stock Availability</h2><div style="max-height:60vh; overflow-y:auto;" id="stock-list-container"></div><div class="modal-actions"><button class="btn-close" onclick="document.getElementById('stockModal').style.display='none'">Close</button></div></div>
+    </div>
+
+    <script>
+        fetch('auth.php?action=check_session&app=admin').then(res => res.json()).then(data => { if (data.status === 'logged_out') window.location.href = 'index.html'; else if (data.role === 'staff') { document.getElementById('tab-menu').style.display = 'none'; document.getElementById('tab-users').style.display = 'none'; } });
+        function logout() { fetch('auth.php?action=logout&app=admin').then(() => { window.location.href = 'index.html'; }); }
+
+        let allProducts=[], allCategories=[], currentCategoryFilter='', currentHistoryData=[], historyFilterStatus='all';
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active')); event.target.classList.add('active');
+            ['operations','menu','users','history'].forEach(v => document.getElementById('view-'+v).style.display = 'none');
+            if(tabName==='operations') document.getElementById('view-operations').style.display = 'flex';
+            else if(tabName==='menu') { document.getElementById('view-menu').style.display = 'block'; initVisualMenuManager(); }
+            else if(tabName==='users') { document.getElementById('view-users').style.display = 'flex'; fetchUsers(); }
+            else if(tabName==='history') { document.getElementById('view-history').style.display = 'flex'; initHistory(); }
+        }
+
+        // --- OPERATIONS ---
+        function fetchOrders() { fetch('api.php?action=get_orders').then(res => res.json()).then(data => renderOrders(data)); } setInterval(fetchOrders, 2000); fetchOrders();
+        function renderOrders(orders) { ['unpaid','pending','preparing','ready'].forEach(id => document.getElementById(id+'-list').innerHTML = ''); let unpaidCount=0; orders.forEach(order => { const card=createCard(order); if(order.status==='unpaid'){ document.getElementById('unpaid-list').appendChild(card); unpaidCount++; } else document.getElementById(order.status+'-list').appendChild(card); }); document.getElementById('unpaid-count').innerText=unpaidCount; }
+        function createCard(order) { const el=document.createElement('div'); el.className='order-card'; let itemsHtml=order.items.map(i => `<div>${i.qty}x ${i.name}</div>`).join(''); let btns=''; if(order.status==='unpaid') { el.style.borderLeftColor='#f44336'; btns=`<button class="btn-action btn-cancel" onclick="updateStatus(${order.id}, 'cancelled')">✕</button><button class="btn-action btn-pay" onclick="updateStatus(${order.id}, 'pending')">₱${order.total_price} • PAID</button>`; } else if(order.status==='pending') { el.style.borderLeftColor='#ff9800'; btns=`<button class="btn-action btn-cook" onclick="updateStatus(${order.id}, 'preparing')">Cook</button>`; } else if(order.status==='preparing') { el.style.borderLeftColor='#2196f3'; btns=`<button class="btn-action btn-ready" onclick="updateStatus(${order.id}, 'ready')">Ready</button>`; } else if(order.status==='ready') { el.style.borderLeftColor='#4caf50'; btns=`<button class="btn-action btn-complete" onclick="updateStatus(${order.id}, 'completed')">Done</button>`; } el.innerHTML=`<div class="card-top"><span class="order-id">#${order.id}</span></div><div style="margin-bottom:10px; font-size:0.9rem; color:#555">${itemsHtml}</div><div class="card-actions">${btns}</div>`; return el; }
+        function updateStatus(id, s) { fetch('api.php?action=update_status', { method: 'POST', body: JSON.stringify({ id: id, status: s }) }).then(() => fetchOrders()); }
+        function openStockModal() { document.getElementById('stockModal').style.display = 'flex'; fetch('admin_api.php?action=get_all').then(res => res.json()).then(data => { const list=document.getElementById('stock-list-container'); list.innerHTML=''; data.forEach(p => { const btnColor=p.is_available==1?'#4caf50':'#f44336'; const btnText=p.is_available==1?'IN STOCK':'OUT'; list.innerHTML+=`<div class="stock-item-row"><span><b>${p.name}</b> <span style="font-size:0.8rem; color:#777">(${p.category})</span></span><button class="stock-toggle-btn" style="background:${btnColor}" onclick="toggleQuickStock(this, ${p.id}, ${p.is_available})">${btnText}</button></div>`; }); }); }
+        function toggleQuickStock(btn, id, currentStatus) { const newStatus = currentStatus == 1 ? 0 : 1; const fd = new FormData(); fd.append('id', id); fd.append('status', newStatus); fetch('admin_api.php?action=toggle_stock', { method: 'POST', body: fd }).then(() => { if(newStatus == 1) { btn.style.background = '#4caf50'; btn.innerText = 'IN STOCK'; } else { btn.style.background = '#f44336'; btn.innerText = 'OUT'; } btn.onclick = function() { toggleQuickStock(btn, id, newStatus); }; }); }
+
+        // --- HISTORY ---
+        function initHistory() { if(!document.getElementById('date-end').value) { document.getElementById('date-end').valueAsDate=new Date(); let d=new Date(); d.setDate(d.getDate()-30); document.getElementById('date-start').valueAsDate=d; } fetchHistory(); }
+        function setHistoryFilter(status) { historyFilterStatus=status; document.querySelectorAll('.h-btn').forEach(b => b.classList.remove('active')); document.getElementById('filter-'+status).classList.add('active'); fetchHistory(); }
+        function fetchHistory() { const start=document.getElementById('date-start').value; const end=document.getElementById('date-end').value; fetch(`api.php?action=get_history&start=${start}&end=${end}&status=${historyFilterStatus}`).then(res => res.json()).then(data => { currentHistoryData=data.history; document.getElementById('total-revenue').innerText="₱"+(data.stats.total_revenue||0); document.getElementById('total-orders').innerText=data.stats.total_orders||0; const tbody=document.getElementById('history-list'); tbody.innerHTML=''; if(data.history.length===0) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center; padding:20px;">No records found.</td></tr>'; return; } data.history.forEach(order => { const statusClass=order.status==='completed'?'status-completed':'status-cancelled'; tbody.innerHTML+=`<tr><td>#${order.id}</td><td>${order.created_at}</td><td style="font-size:0.9rem; color:#555;">${order.items_summary}</td><td style="font-weight:bold;">₱${order.total_price}</td><td><span class="status-badge ${statusClass}">${order.status}</span></td></tr>`; }); }); }
+        function downloadCSV() { if(currentHistoryData.length===0) { Swal.fire('Info', 'No data to export', 'info'); return; } let csvContent="data:text/csv;charset=utf-8,Order ID,Date,Items,Total Price,Status\n"; currentHistoryData.forEach(row => { const cleanItems=row.items_summary.replace(/,/g, " +"); csvContent+=`${row.id},${row.created_at},${cleanItems},${row.total_price},${row.status}\n`; }); const link=document.createElement("a"); link.setAttribute("href", encodeURI(csvContent)); link.setAttribute("download", "report.csv"); document.body.appendChild(link); link.click(); document.body.removeChild(link); }
+
+        // --- MENU MANAGER ---
+        function initVisualMenuManager() { fetch('admin_api.php?action=get_categories').then(res => res.json()).then(cats => { allCategories=cats; if(cats.length>0 && !currentCategoryFilter) currentCategoryFilter=cats[0].name; renderVisualSidebar(); fetch('admin_api.php?action=get_all').then(res => res.json()).then(prods => { allProducts=prods; renderVisualGrid(); }); }); }
+        function renderVisualSidebar() { const container=document.getElementById('mm-sidebar-list'); container.innerHTML=''; allCategories.forEach(cat => { const el=document.createElement('div'); el.className=`mm-category ${cat.name===currentCategoryFilter?'active':''}`; el.draggable=true; el.dataset.id=cat.id; el.innerHTML=`${cat.icon} &nbsp; ${cat.name} <span style="margin-left:auto; font-size:0.8rem; color:#aaa;">≡</span>`; el.onclick=() => { currentCategoryFilter=cat.name; renderVisualSidebar(); renderVisualGrid(); }; el.ondblclick=() => editCategory(cat); addDragEvents(el, 'category'); container.appendChild(el); }); const addBtn=document.createElement('div'); addBtn.className='btn-add-cat-visual'; addBtn.innerHTML='+ Add Category'; addBtn.onclick=openCatModal; container.appendChild(addBtn); }
+        function renderVisualGrid() { const container=document.getElementById('mm-product-grid'); document.getElementById('mm-current-cat-title').textContent=currentCategoryFilter; container.innerHTML=''; const filtered=allProducts.filter(p => p.category===currentCategoryFilter); filtered.forEach(p => { const el=document.createElement('div'); el.className='mm-card'; el.draggable=true; el.dataset.id=p.id; const imgHtml=p.image_url?`<img src="${p.image_url}" class="mm-img">`:`<div class="mm-img" style="display:flex;align-items:center;justify-content:center;">No Img</div>`; const stockOpacity=p.is_available==0?'opacity:0.5;':''; el.innerHTML=`<div style="${stockOpacity}">${imgHtml}<div class="mm-title">${p.name}</div><div class="mm-price">₱${p.price}</div></div>`; el.onclick=() => editProduct(p); addDragEvents(el, 'product'); container.appendChild(el); }); const addCard=document.createElement('div'); addCard.className='mm-add-card'; addCard.innerHTML='<span class="plus-icon">+</span>'; addCard.onclick=() => { openModal(); fetchCategoriesForDropdown().then(() => { document.getElementById('p_category').value=currentCategoryFilter; }); }; container.appendChild(addCard); }
+        let dragSrcEl=null;
+        function addDragEvents(item, type) { item.addEventListener('dragstart', (e) => { dragSrcEl=item; item.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; }); item.addEventListener('dragover', (e) => { if(e.preventDefault) e.preventDefault(); e.dataTransfer.dropEffect='move'; return false; }); item.addEventListener('dragenter', (e) => { item.style.transform='scale(1.02)'; }); item.addEventListener('dragleave', (e) => { item.style.transform='scale(1)'; }); item.addEventListener('drop', (e) => { if(e.stopPropagation) e.stopPropagation(); if(dragSrcEl!==item) { const parent=item.parentNode; const srcIndex=[...parent.children].indexOf(dragSrcEl); const targetIndex=[...parent.children].indexOf(item); if(srcIndex<targetIndex) parent.insertBefore(dragSrcEl, item.nextSibling); else parent.insertBefore(dragSrcEl, item); saveNewOrder(parent, type); } return false; }); item.addEventListener('dragend', () => { item.classList.remove('dragging'); item.style.transform='scale(1)'; }); }
+        function saveNewOrder(container, type) { const items=[]; let index=0; for(let child of container.children) { if(child.dataset.id) { items.push({ id: child.dataset.id, order: index }); index++; } } const action=type==='category'?'reorder_categories':'reorder_products'; fetch(`admin_api.php?action=${action}`, { method: 'POST', body: JSON.stringify({ items: items }) }); }
+
+        function openModal() { document.getElementById('productModal').style.display='flex'; document.getElementById('p_id').value=''; document.getElementById('p_name').value=''; document.getElementById('p_price').value=''; document.getElementById('p_ingredients').value=''; document.getElementById('p_preview').style.display='none'; document.getElementById('modalTitle').innerText="Add New Product"; fetchCategoriesForDropdown(); }
+        function closeModal() { document.getElementById('productModal').style.display='none'; }
+        
+        function editProduct(p) { 
+            openModal(); 
+            document.getElementById('modalTitle').innerText="Edit Product"; 
+            document.getElementById('p_id').value=p.id; 
+            document.getElementById('p_name').value=p.name; 
+            document.getElementById('p_price').value=p.price; 
+            document.getElementById('p_status').value=p.is_available; 
+            document.getElementById('p_ingredients').value=p.ingredients || '';
+            fetchCategoriesForDropdown().then(() => { document.getElementById('p_category').value=p.category; }); 
+            if(p.image_url) { document.getElementById('p_preview').src=p.image_url; document.getElementById('p_preview').style.display='inline-block'; } 
+        }
+
+        function saveProduct() { 
+            const fd=new FormData(); 
+            fd.append('id', document.getElementById('p_id').value); 
+            fd.append('name', document.getElementById('p_name').value); 
+            fd.append('category', document.getElementById('p_category').value); 
+            fd.append('ingredients', document.getElementById('p_ingredients').value);
+            fd.append('price', document.getElementById('p_price').value); 
+            fd.append('is_available', document.getElementById('p_status').value); 
+            if(document.getElementById('p_image').files[0]) fd.append('image', document.getElementById('p_image').files[0]); 
+            
+            fetch('admin_api.php?action=save', { method: 'POST', body: fd })
+            .then(res => res.json())
+            .then(r => { 
+                if(r.status==='success') { closeModal(); initVisualMenuManager(); Swal.fire('Saved!', 'Product updated successfully', 'success'); } 
+                else Swal.fire('Error', r.message, 'error'); 
+            }); 
+        }
+
+        function deleteProductFromModal() { 
+            const id=document.getElementById('p_id').value; if(!id) return; 
+            Swal.fire({
+                title: 'Delete this product?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    const fd=new FormData(); fd.append('id', id); 
+                    fetch('admin_api.php?action=delete', { method: 'POST', body: fd })
+                    .then(() => { closeModal(); initVisualMenuManager(); Swal.fire('Deleted!', 'Product removed.', 'success'); });
+                }
+            });
+        }
+
+        function openCatModal() { document.getElementById('categoryModal').style.display='flex'; document.getElementById('c_id').value=''; document.getElementById('c_name').value=''; document.getElementById('c_icon').value=''; document.getElementById('catModalTitle').innerText="Add Category"; }
+        function closeCatModal() { document.getElementById('categoryModal').style.display='none'; }
+        function saveCategory() { const data={ id: document.getElementById('c_id').value, name: document.getElementById('c_name').value, icon: document.getElementById('c_icon').value }; fetch('admin_api.php?action=save_category', { method: 'POST', body: JSON.stringify(data) }).then(() => { closeCatModal(); initVisualMenuManager(); }); }
+        
+        function deleteCategoryFromModal() { 
+            const id=document.getElementById('c_id').value; if(!id) return; 
+            Swal.fire({
+                title: 'Delete this category?',
+                text: "All products in it will need a new category.",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete it!'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    const fd=new FormData(); fd.append('id', id); 
+                    fetch('admin_api.php?action=delete_category', { method: 'POST', body: fd }).then(() => { closeCatModal(); initVisualMenuManager(); });
+                }
+            });
+        }
+
+        // --- USER MANAGEMENT UPDATE ---
+        
+        function togglePass(id) {
+            const x = document.getElementById(id);
+            x.type = x.type === "password" ? "text" : "password";
+        }
+
+        function fetchUsers() { 
+            fetch('auth.php?action=get_users').then(res => res.json()).then(data => { 
+                const tbody=document.getElementById('user-list'); 
+                tbody.innerHTML=''; 
+                data.forEach(u => { 
+                    tbody.innerHTML+=`
+                        <tr>
+                            <td><b>${u.username}</b></td>
+                            <td><span style="background:#eee; padding:2px 8px; border-radius:4px;">${u.role}</span></td>
+                            <td style="color:#777; font-size:0.9rem;">${u.created_at}</td>
+                            <td>
+                                <button class="btn-edit" onclick="editUser('${u.id}', '${u.username}', '${u.role}')">Edit</button>
+                                <button class="btn-delete" onclick="deleteUser(${u.id})">Delete</button>
+                            </td>
+                        </tr>`; 
+                }); 
+            }); 
+        }
+
+        function openUserModal() { 
+            document.getElementById('userModal').style.display='flex'; 
+            document.getElementById('userModalTitle').innerText="Add New User";
+            document.getElementById('u_id').value=''; 
+            document.getElementById('u_name').value=''; 
+            document.getElementById('u_pass').value=''; 
+            document.getElementById('pass-hint').style.display='none';
+        }
+
+        function editUser(id, name, role) {
+            document.getElementById('userModal').style.display='flex';
+            document.getElementById('userModalTitle').innerText="Edit User";
+            document.getElementById('u_id').value=id;
+            document.getElementById('u_name').value=name;
+            document.getElementById('u_role').value=role;
+            document.getElementById('u_pass').value='';
+            document.getElementById('pass-hint').style.display='inline'; // Show "Leave blank" hint
+        }
+
+        function closeUserModal() { document.getElementById('userModal').style.display='none'; }
+
+        function saveUser() { 
+            const id = document.getElementById('u_id').value;
+            const user = document.getElementById('u_name').value; 
+            const pass = document.getElementById('u_pass').value; 
+            const role = document.getElementById('u_role').value; 
+            
+            // Validation
+            if(!user) { Swal.fire('Error', 'Username is required', 'error'); return; }
+            if(!id && !pass) { Swal.fire('Error', 'Password is required for new users', 'error'); return; }
+
+            const action = id ? 'update_user' : 'add_user';
+            
+            const payload = { username: user, role: role };
+            if(id) payload.id = id;
+            if(pass) payload.password = pass;
+
+            fetch('auth.php?action='+action, { method: 'POST', body: JSON.stringify(payload) })
+            .then(res => res.json())
+            .then(data => { 
+                if(data.status==='success') { 
+                    closeUserModal(); 
+                    fetchUsers(); 
+                    Swal.fire('Success', id ? 'User updated' : 'User added', 'success'); 
+                } else { 
+                    Swal.fire('Error', data.message || 'Operation failed', 'error'); 
+                } 
+            }); 
+        }
+
+        function deleteUser(id) { 
+            Swal.fire({
+                title: 'Delete user?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Yes, delete'
+            }).then((result) => {
+                if(result.isConfirmed) {
+                    const fd=new FormData(); fd.append('id', id); 
+                    fetch('auth.php?action=delete_user', { method: 'POST', body: fd }).then(res => res.json()).then(data => { if(data.status==='error') Swal.fire('Error', data.message, 'error'); else fetchUsers(); });
+                }
+            });
+        }
+        function fetchCategoriesForDropdown() { return fetch('admin_api.php?action=get_categories').then(res => res.json()).then(data => { const select=document.getElementById('p_category'); select.innerHTML=''; data.forEach(c => select.innerHTML+=`<option value="${c.name}">${c.name}</option>`); }); }
+        function previewImage(input) { if(input.files && input.files[0]) { const reader=new FileReader(); reader.onload=function(e) { document.getElementById('p_preview').src=e.target.result; document.getElementById('p_preview').style.display='inline-block'; }; reader.readAsDataURL(input.files[0]); } }
+        function editCategory(c) { openCatModal(); document.getElementById('catModalTitle').innerText="Edit Category"; document.getElementById('c_id').value=c.id; document.getElementById('c_name').value=c.name; document.getElementById('c_icon').value=c.icon; }
+    </script>
+</body>
+</html>
