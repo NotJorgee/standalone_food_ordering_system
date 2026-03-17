@@ -10,7 +10,8 @@ $action = $_GET['action'] ?? '';
 if ($action == 'get_orders') {
     if(!isDashUser()) { echo json_encode([]); exit; }
     
-    $sql = "SELECT * FROM orders WHERE status NOT IN ('completed', 'cancelled') ORDER BY created_at ASC";
+    // Safety: Strictly fetch only active board statuses
+    $sql = "SELECT * FROM orders WHERE status IN ('unpaid', 'pending', 'preparing', 'ready') ORDER BY created_at ASC";
     $result = $conn->query($sql);
     $orders = [];
     while($row = $result->fetch_assoc()) {
@@ -22,6 +23,7 @@ if ($action == 'get_orders') {
         $orders[] = $row;
     }
     echo json_encode($orders);
+    exit;
 }
 
 if ($action == 'get_history') {
@@ -50,6 +52,7 @@ if ($action == 'get_history') {
         $history[] = $row;
     }
     echo json_encode(["stats"=>["total_revenue"=>$rev, "total_orders"=>$count], "history"=>$history]);
+    exit;
 }
 
 if ($action == 'update_status') {
@@ -57,12 +60,14 @@ if ($action == 'update_status') {
     $data = json_decode(file_get_contents("php://input"), true);
     $id = $data['id']; $status = $data['status'];
     
-    if($status == 'delete') $conn->query("DELETE FROM orders WHERE id=$id");
-    else {
+    if($status == 'delete') {
+        $conn->query("DELETE FROM orders WHERE id=$id");
+    } else {
         $stmt = $conn->prepare("UPDATE orders SET status=? WHERE id=?");
         $stmt->bind_param("si", $status, $id);
         $stmt->execute();
     }
     echo json_encode(["success"=>true]);
+    exit;
 }
 ?>
