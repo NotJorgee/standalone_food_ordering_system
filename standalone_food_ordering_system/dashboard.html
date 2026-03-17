@@ -98,10 +98,7 @@
     <nav class="navbar">
         <div class="nav-brand"><span>🍽️</span> <span class="brand-text">Admin Panel</span></div>
         <div class="nav-tabs">
-            <button class="nav-tab active" id="tab-ops" onclick="switchTab('operations')">Operations</button>
-            <button class="nav-tab" id="tab-hist" onclick="switchTab('history')">History</button>
-            <button class="nav-tab" id="tab-menu" onclick="switchTab('menu')">Menu Manager</button>
-            <button class="nav-tab" id="tab-users" onclick="switchTab('users')">Users</button>
+            
         </div>
         <div class="nav-actions">
             <button class="btn-kiosk" onclick="window.location.href='kiosk.html'"><span>🚀</span><span class="btn-text">Launch Kiosk</span></button>
@@ -208,14 +205,61 @@
     </div>
 
     <script>
-        fetch('auth.php?action=check_session&app=admin').then(res => res.json()).then(data => { if (data.status === 'logged_out') window.location.href = 'index.html'; else if (data.role === 'staff') { document.getElementById('tab-menu').style.display = 'none'; document.getElementById('tab-users').style.display = 'none'; } });
-        function logout() { fetch('auth.php?action=logout&app=admin').then(() => { window.location.href = 'index.html'; }); }
+        // 1. Dynamic Session Check & Module Loading
+        fetch('auth.php?action=check_session&app=admin')
+            .then(res => res.json())
+            .then(data => { 
+                if (data.status === 'logged_out') {
+                    window.location.href = 'index.html'; 
+                } else {
+                    // Pass the allowed modules from the DB to the renderer
+                    renderNavigation(data.allowed_modules || []);
+                }
+            });
+
+        function logout() { 
+            fetch('auth.php?action=logout&app=admin').then(() => { window.location.href = 'index.html'; }); 
+        }
 
         let allProducts=[], allCategories=[], currentCategoryFilter='', currentHistoryData=[], historyFilterStatus='all';
 
-        function switchTab(tabName) {
-            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active')); event.target.classList.add('active');
-            ['operations','menu','users','history'].forEach(v => document.getElementById('view-'+v).style.display = 'none');
+        // 2. The Dynamic Tab Renderer
+        function renderNavigation(allowedModules) {
+            const navContainer = document.querySelector('.nav-tabs');
+            navContainer.innerHTML = ''; 
+            
+            const allModules = {
+                'operations': '<button class="nav-tab" id="tab-operations" onclick="switchTab(\'operations\', this)">👨‍🍳 Kitchen Operations</button>',
+                'history': '<button class="nav-tab" id="tab-history" onclick="switchTab(\'history\', this)">📜 Order History</button>',
+                'menu': '<button class="nav-tab" id="tab-menu" onclick="switchTab(\'menu\', this)">📋 Menu Manager</button>',
+                'users': '<button class="nav-tab" id="tab-users" onclick="switchTab(\'users\', this)">👥 User Management</button>'
+            };
+
+            // Only inject the tabs the user has permission to see
+            allowedModules.forEach(module => {
+                if(allModules[module]) navContainer.innerHTML += allModules[module];
+            });
+
+            // Auto-click the first available tab so the dashboard isn't empty on load
+            if (allowedModules.length > 0) {
+                const firstTabBtn = document.getElementById('tab-' + allowedModules[0]);
+                if (firstTabBtn) switchTab(allowedModules[0], firstTabBtn);
+            }
+        }
+
+        // 3. Updated Switch Tab (Handles programmatic clicking)
+        function switchTab(tabName, btnElement) {
+            // Remove active class from all tabs, add to the clicked one
+            document.querySelectorAll('.nav-tab').forEach(btn => btn.classList.remove('active')); 
+            if (btnElement) btnElement.classList.add('active');
+            
+            // Hide all views
+            ['operations','menu','users','history'].forEach(v => {
+                const el = document.getElementById('view-'+v);
+                if(el) el.style.display = 'none';
+            });
+            
+            // Show the requested view and trigger its init function
             if(tabName==='operations') document.getElementById('view-operations').style.display = 'flex';
             else if(tabName==='menu') { document.getElementById('view-menu').style.display = 'block'; initVisualMenuManager(); }
             else if(tabName==='users') { document.getElementById('view-users').style.display = 'flex'; fetchUsers(); }

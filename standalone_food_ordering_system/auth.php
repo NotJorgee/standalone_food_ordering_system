@@ -8,41 +8,45 @@ $action = $_GET['action'] ?? '';
 // 1. LOGIN
 if ($action == 'login') {
     $data = json_decode(file_get_contents("php://input"), true);
-    $user = $data['username'];
-    $pass = md5($data['password']); 
-    $appType = $data['app'] ?? 'admin'; // 'kiosk' or 'admin'
+    $username = $data['username'];
+    $password = md5($data['password']); 
 
-    $stmt = $conn->prepare("SELECT id, role FROM users WHERE username=? AND password=?");
-    $stmt->bind_param("ss", $user, $pass);
+    // NEW: Join with roles table to get role_name instead of the old enum
+    $stmt = $conn->prepare("SELECT u.id, r.role_name FROM users u JOIN roles r ON u.role_id = r.id WHERE u.username=? AND u.password=?");
+    $stmt->bind_param("ss", $username, $password);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($row = $result->fetch_assoc()) {
-        // STORE IN SEPARATE SESSIONS
-        if ($appType === 'kiosk') {
-            $_SESSION['kiosk_session'] = ['id' => $row['id'], 'role' => $row['role']];
-        } else {
-            $_SESSION['admin_session'] = ['id' => $row['id'], 'role' => $row['role']];
-        }
-        echo json_encode(["status" => "success", "role" => $row['role']]);
+        $_SESSION['admin_session'] = ['id' => $row['id'], 'role' => $row['role_name']];
+        echo json_encode(['status' => 'success']);
     } else {
-        echo json_encode(["status" => "error"]);
+        echo json_encode(['status' => 'error']);
     }
+    exit;
 }
 
 // 2. CHECK SESSION (Specific to App)
 if ($action == 'check_session') {
-    $appType = $_GET['app'] ?? 'admin';
+    if (isset($_SESSION['admin_session'])) {
+        $role = $_SESSION['admin_session']['role'];
+        
+        // NEW: Dynamically fetch what modules this role is allowed to see
+        $stmt = $conn->prepare("SELECT p.module_name FROM roles r JOIN role_permissions rp ON r.id = rp.role_id JOIN permissions p ON rp.permission_id = p.id WHERE r.role_name = ?");
+        $stmt->bind_param("s", $role);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        
+        $allowed_modules = [];
+        while($row = $res->fetch_assoc()) {
+            $allowed_modules[] = $row['module_name'];
+        }
 
-    if ($appType === 'kiosk' && isset($_SESSION['kiosk_session'])) {
-        echo json_encode(["status" => "logged_in", "role" => $_SESSION['kiosk_session']['role']]);
-    } 
-    elseif ($appType === 'admin' && isset($_SESSION['admin_session'])) {
-        echo json_encode(["status" => "logged_in", "role" => $_SESSION['admin_session']['role']]);
-    } 
-    else {
-        echo json_encode(["status" => "logged_out"]);
+        echo json_encode(['status' => 'logged_in', 'role' => $role, 'allowed_modules' => $allowed_modules]);
+    } else {
+        echo json_encode(['status' => 'logged_out']);
     }
+    exit;
 }
 
 // 3. LOGOUT (Specific to App)
@@ -67,7 +71,7 @@ if ($action == 'get_users') {
 }
 
 if ($action == 'add_user') {
-    if (!isAdmin()) exit;
+    if ($_SESSION['admin_session']['role'] !== 'admin') exit;
     $data = json_decode(file_get_contents("php://input"), true);
     
     // Check if user already exists
@@ -110,7 +114,7 @@ if ($action == 'update_user') {
 // -----------------------------
 
 if ($action == 'delete_user') {
-    if (!isAdmin()) exit;
+    if ($_SESSION['admin_session']['role'] !== 'admin') exit;
     $id = $_POST['id'];
     if ($id == $_SESSION['admin_session']['id']) { echo json_encode(["status"=>"error", "message"=>"Cannot delete self"]); exit; }
     $conn->query("DELETE FROM users WHERE id=$id");

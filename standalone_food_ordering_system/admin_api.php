@@ -1,22 +1,39 @@
 <?php
 session_start();
-include 'db_connect.php';
+require 'db_connect.php';
+
 header('Content-Type: application/json');
 
 $action = $_GET['action'] ?? '';
+$userRole = $_SESSION['admin_session']['role'] ?? 'guest';
 
-// --- AUTH HELPERS ---
-function isAdmin() {
-    return isset($_SESSION['admin_session']) && $_SESSION['admin_session']['role'] === 'admin';
+// 1. THE RBAC MATRIX (Centralized Security Rules)
+$access_control = [
+    'get_all'            => ['admin', 'staff'],
+    'save'               => ['admin'],             
+    'delete'             => ['admin'],             
+    'toggle_stock'       => ['admin', 'staff'],    // ADDED: Staff needs to toggle stock in the kitchen
+    'get_categories'     => ['admin', 'staff'],
+    'save_category'      => ['admin'],             
+    'delete_category'    => ['admin'],             
+    'reorder_products'   => ['admin'],             // ADDED: Admin only
+    'reorder_categories' => ['admin']              // ADDED: Admin only
+];
+
+// 2. THE MIDDLEWARE GATE
+if (!array_key_exists($action, $access_control)) {
+    die(json_encode(["error" => "Unknown Action: " . $action]));
 }
-function isLogged() {
-    return isset($_SESSION['admin_session']) || isset($_SESSION['kiosk_session']);
+
+if (!in_array($userRole, $access_control[$action])) {
+    die(json_encode(["status" => "error", "message" => "Access Denied: Your role lacks permission."]));
 }
+
 // --------------------
 
 // 1. GET ALL PRODUCTS
 if ($action == 'get_all') {
-    if(!isLogged()) { echo json_encode([]); exit; }
+    // REMOVED: old isLogged() check
     $result = $conn->query("SELECT * FROM products ORDER BY sort_order ASC");
     $products = [];
     while($row = $result->fetch_assoc()) {
@@ -26,14 +43,14 @@ if ($action == 'get_all') {
     echo json_encode($products);
 }
 
-// 2. SAVE PRODUCT (Updated with Ingredients)
+// 2. SAVE PRODUCT
 if ($action == 'save') {
-    if (!isAdmin()) { echo json_encode(["status"=>"error"]); exit; }
+    // REMOVED: old isAdmin() check
     
     $name = $_POST['name']; 
     $price = $_POST['price']; 
     $cat = $_POST['category']; 
-    $ing = $_POST['ingredients']; // <--- NEW FIELD
+    $ing = $_POST['ingredients'];
     $id = $_POST['id'] ?? ''; 
     $avail = $_POST['is_available'];
     
@@ -61,7 +78,7 @@ if ($action == 'save') {
 
 // 3. DELETE PRODUCT
 if ($action == 'delete') {
-    if (!isAdmin()) exit;
+    // REMOVED: old isAdmin() check
     $id = $_POST['id'];
     $conn->query("DELETE FROM products WHERE id=$id");
     echo json_encode(["status" => "success"]);
@@ -69,7 +86,7 @@ if ($action == 'delete') {
 
 // 4. TOGGLE STOCK
 if ($action == 'toggle_stock') {
-    if (!isset($_SESSION['admin_session'])) exit;
+    // REMOVED: old session check
     $id = $_POST['id']; $status = $_POST['status'];
     $stmt = $conn->prepare("UPDATE products SET is_available=? WHERE id=?");
     $stmt->bind_param("ii", $status, $id);
@@ -79,7 +96,7 @@ if ($action == 'toggle_stock') {
 
 // 5. GET CATEGORIES
 if ($action == 'get_categories') {
-    if(!isLogged()) { echo json_encode([]); exit; }
+    // REMOVED: old isLogged() check
     $result = $conn->query("SELECT * FROM categories ORDER BY sort_order ASC");
     $cats = [];
     while($row = $result->fetch_assoc()) $cats[] = $row;
@@ -88,7 +105,7 @@ if ($action == 'get_categories') {
 
 // 6. SAVE CATEGORY
 if ($action == 'save_category') {
-    if (!isAdmin()) exit;
+    // REMOVED: old isAdmin() check
     $data = json_decode(file_get_contents("php://input"), true);
     $id = $data['id'] ?? null; $name = $data['name']; $icon = $data['icon'];
     
@@ -108,7 +125,7 @@ if ($action == 'save_category') {
 
 // 7. DELETE CATEGORY
 if ($action == 'delete_category') {
-    if (!isAdmin()) exit;
+    // REMOVED: old isAdmin() check
     $id = $_POST['id'];
     $conn->query("DELETE FROM categories WHERE id=$id");
     echo json_encode(["status" => "success"]);
@@ -116,7 +133,7 @@ if ($action == 'delete_category') {
 
 // 8. REORDER
 if ($action == 'reorder_products' || $action == 'reorder_categories') {
-    if (!isAdmin()) exit;
+    // REMOVED: old isAdmin() check
     $data = json_decode(file_get_contents("php://input"), true);
     $table = ($action == 'reorder_products') ? 'products' : 'categories';
     $stmt = $conn->prepare("UPDATE $table SET sort_order=? WHERE id=?");
